@@ -58,7 +58,10 @@ void View::updateGameObject(GameObject* obj) {
         }
 
 }
-
+void View::displayMessage(const std::string& message, Color fg, Color bg, bool hi, bool blinking) {
+    std::cout << "\033[2J\033[H"; // Clear screen
+    std::cout << AnsiPrint(message.c_str(), fg, bg, hi, blinking) << std::endl;
+}
 void View::render(){
     auto [rows, cols] = get_terminal_size();
     bool resized = (rows != _termHeight || cols != _termWidth);

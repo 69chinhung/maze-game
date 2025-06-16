@@ -13,6 +13,7 @@ public:
     void render();
     void updateGameObject(GameObject*);
     void resetLatest();
+	void displayMessage(const std::string& message, Color fg, Color bg, bool hi, bool blinking);
 private:
     int _termWidth;
     int _termHeight;

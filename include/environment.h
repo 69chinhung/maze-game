@@ -9,4 +9,9 @@ constexpr int WINDOW_PIXEL_WIDTH = GAME_WINDOW_WIDTH * GAME_WINDOW_CELL_WIDTH;
 constexpr int WINDOW_PIXEL_HEIGHT = GAME_WINDOW_HEIGHT; 
 
 constexpr double SPF = 1; // Second Per Frame 
+enum ObjectType {
+    PLAYER,
+    WALL,
+    EXIT
+};
 #endif

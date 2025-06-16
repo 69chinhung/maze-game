@@ -15,7 +15,7 @@ public:
   Icon getIcon() const;
   void setDirection(Direction);
   Vec2 getPosition() const;
-
+ void setPosition(const Position& pos) { _pos = pos; }
 protected:
   Direction _dir;
   Vec2 _pos;

@@ -1,92 +1,159 @@
-#include <iostream>
-#include <ctime>
-#include <thread>
-#include <unistd.h>
-#include <termios.h>
-
-#include "environment.h"
 #include "controller.h"
 #include "gameObjectFactory.h"
+#include "environment.h"
+#include "iconFactory.h"
+#include "AnsiPrint.h"
+#include <iostream>
+#include <unistd.h>
+#include <cstdlib>
+#include <chrono>  
+#include <thread>  
 
 
-Controller::Controller(View& view) : _view(view){
 
-    _objs.emplace_back(SimpleGameObjectFactory::playerGameObject());
-    for(int i = 0; i < 5; ++i){
-        _objs.emplace_back(SimpleGameObjectFactory::randomGameObject());
+Controller::Controller(View& view) : _view(view), _gameActive(true) {
+    
+    _player = new GameObject(IconFactory::NxMColor(Size(1,1), BLUE), Position(1, 1));  
+    _objs.push_back(_player);
+    
+    
+    _exit = new GameObject(IconFactory::NxMColor(Size(1,1), GREEN), Position(GAME_WINDOW_WIDTH-2, GAME_WINDOW_HEIGHT-2));
+    _objs.push_back(_exit);
+    
+    
+    for (int i = 0; i < GAME_WINDOW_WIDTH; i++) {
+        _objs.push_back(new GameObject(IconFactory::NxMColor(Size(1,1), RED), Position(i, 0)));  
+        _objs.push_back(new GameObject(IconFactory::NxMColor(Size(1,1), RED), Position(i, GAME_WINDOW_HEIGHT-1)));  
     }
+    for (int j = 1; j < GAME_WINDOW_HEIGHT-1; j++) {
+        _objs.push_back(new GameObject(IconFactory::NxMColor(Size(1,1), RED), Position(0, j)));  
+        _objs.push_back(new GameObject(IconFactory::NxMColor(Size(1,1), RED), Position(GAME_WINDOW_WIDTH-1, j)));  
+    }
+    
+
+    for (int i = 1; i <8; i++) {
+        _objs.push_back(new GameObject(IconFactory::NxMColor({1,1}, RED), Position{i, 5}));
+    }
+    
+	 for (int i = 10; i <20; i++) {
+         _objs.push_back(new GameObject(IconFactory::NxMColor({1,1}, RED), Position{i, 5}));
+      }
+ 
+    for (int j = 1; j < 8; j++) {
+        _objs.push_back(new GameObject(IconFactory::NxMColor({1,1}, RED), Position{10, j}));
+    }
+	for (int j = 10; j < 20; j++) {
+         _objs.push_back(new GameObject(IconFactory::NxMColor({1,1}, RED), Position{10, j}));
+      }
+	 
+    
+    for (int i = 1; i < 15; i++) {
+        _objs.push_back(new GameObject(IconFactory::NxMColor({1,1}, RED), Position{i, 12}));
+    }
+	 for (int i = 17; i < 20; i++) {
+          _objs.push_back(new GameObject(IconFactory::NxMColor({1,1}, RED), Position{i, 12}));
+      }
 }
 
 void Controller::run() {
-    // initial setup
+    
     std::cin.tie(0);
     std::ios::sync_with_stdio(0);
     configure_terminal();
 
-    // init state
+    
     int input = -1;
     clock_t start, end;
     
     // Main loop
-    while (true) {
+    while (_gameActive) {
         start = clock();
-        // game loop goes here
         input = read_input();
 
         // ESC to exit program
-        if(input==27)break;
+        if(input == 27) break;
 
         this->handleInput(input);
+        this->update();
 
         _view.resetLatest();
-        for(GameObject* obj : _objs) 
-        {
-
-            obj->update();
-
+        for(GameObject* obj : _objs) {
             _view.updateGameObject(obj);
         }
 
         _view.render();
+        
+    
+        if (checkWinCondition()) {
+            gameOver(true);
+            break;
+        }
+        
         end = clock();
         // frame rate normalization
         double time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
         if (time_taken > SPF) continue;
-        int frameDelay = int((SPF - time_taken) * 1000); // 0.1 seconds
-        if(frameDelay > 0) std::this_thread::sleep_for(std::chrono::milliseconds(frameDelay)); // frame delay
+        int frameDelay = int((SPF - time_taken) * 1000);
+        if(frameDelay > 0) std::this_thread::sleep_for(std::chrono::milliseconds(frameDelay));
     }
 
+    reset_terminal();
 }
 
-
-
-void Controller::handleInput(int keyInput){
-    if(keyInput==-1)return;
+void Controller::handleInput(int keyInput) {
+    if(keyInput == -1 || !_gameActive) return;
     
-    if(keyInput == 'w' || keyInput == 'W'){
-        _objs[0]->setDirection(UP);
-    }
-
-    if(keyInput == 'a' || keyInput == 'A'){
-
-        _objs[0]->setDirection(LEFT);
-    }
-
-    if(keyInput == 's' || keyInput == 'S'){
-
-        _objs[0]->setDirection(DOWN);
-    }
-
-    if(keyInput == 'd' || keyInput == 'D'){
-
-        _objs[0]->setDirection(RIGHT);
-    }
-
-    if(keyInput == '\t'){
+    if(keyInput == 'w' || keyInput == 'W') {
+        _player->setDirection(UP);
+    } else if(keyInput == 'a' || keyInput == 'A') {
+        _player->setDirection(LEFT);
+    } else if(keyInput == 's' || keyInput == 'S') {
+        _player->setDirection(DOWN);
+    } else if(keyInput == 'd' || keyInput == 'D') {
+        _player->setDirection(RIGHT);
     }
 }
 
-void Controller::update(){
+void Controller::update() {
+    if (!_gameActive) return;
+    
+    
+    Position oldPos = _player->getPosition();
+    
+    
+    _player->update();
+    
+    
+    Position newPos = _player->getPosition();
+    for (auto obj : _objs) {
+        if (obj != _player && obj != _exit) {
+            Position objPos = obj->getPosition();
+            if (newPos.x() == objPos.x() && newPos.y() == objPos.y()) {
+                gameOver(false);
+                _player->setPosition(oldPos);
+                return;
+            }
+        }
+    }
+}
+
+bool Controller::checkCollision(const GameObject& obj1, const GameObject& obj2) {
+    return obj1.getPosition().x() == obj2.getPosition().x() && 
+           obj1.getPosition().y() == obj2.getPosition().y();
+}
+
+bool Controller::checkWinCondition() {
+    return checkCollision(*_player, *_exit);
+}
+
+void Controller::gameOver(bool win) {
+    _gameActive = false;
+    std::cout << "\033[2J\033[H";
+if (win) {
+        _view.displayMessage("YOU WIN!", GREEN, BLACK, true, false);
+    } else {
+        _view.displayMessage("GAME OVER!", RED, BLACK, true, false);
+    }
 
 }
 void reset_terminal() {

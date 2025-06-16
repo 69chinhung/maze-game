@@ -13,13 +13,17 @@ public:
     Controller(View&);
     void run();
 private:
-
+ bool checkCollision(const GameObject& obj1, const GameObject& obj2);
+    bool checkWinCondition();
+    void gameOver(bool win);
     void handleInput(int);
     void update();
 
     // Model
     std::vector<GameObject*> _objs;
-
+GameObject* _player;
+    GameObject* _exit;
+    bool _gameActive;
     // View
     View& _view; 
 };
